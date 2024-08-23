@@ -399,7 +399,7 @@
                 "example": {
                     "appId": "test.apn",
                     "ueExternalIdentifier": "123456789012345@dmp.skylo.tech",
-                    "dataSizeInbytes": 45,
+                    "dataSizeInbytes": 4,
                     "contentData": "F005BA11"
                 }
             },
@@ -445,7 +445,7 @@
                 },
                 "example": {
                     "dlMessageId": 12345,
-                    "dataSizeInBytes": 45
+                    "dataSizeInBytes": 3
                 }
             },
             "DownlinkDelivery": {
