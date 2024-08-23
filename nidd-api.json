@@ -1,0 +1,519 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "NIDD Messaging API for Viasat Proof of Concept",
+        "version": "0.1",
+        "description": "Non-IP Data Delivery (**NIDD**) provides a mechanism for simple asynchronous messaging to a remote IoT device. NIDD messages provide small unstructured binary payload, represented in the API as a hexadecimal string.\n\nA user application is assigned to a private Access Point Name (**APN**) associated with an application *appId*. Viasat provides an API key upon configuring the APN, used for authentication. The user then registers three callback URLs where they establish a HTTP listener to receive notifications, along with their inbound API key used by the Viasat callback. Mobile-terminated messages are submitted using a simple POST operation, then receive a delivery notification via the pre-defined callback."
+    },
+    "servers": [
+        {
+            "url": "https://ntn-nidd-proxy.azurewebsites.net/api/nidd"
+        }
+    ],
+    "paths": {
+        "/register-notifications": {
+            "parameters": [
+                {
+                    "$ref": "#/components/parameters/AppId"
+                },
+                {
+                    "$ref": "#/components/parameters/ApiKey"
+                }
+            ],
+            "get": {
+                "operationId": "listRegistrations",
+                "description": "Retrieve the currently registered callbacks.",
+                "tags": ["Callback Registration"],
+                "responses": {
+                    "200": {
+                        "description": "The current configuration",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/CallbackSummary"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            },
+            "post": {
+                "operationId": "createRegistrations",
+                "description": "Register initial callback configuration.",
+                "tags": ["Callback Registration"],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CallbackSummary"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Created"
+                    },
+                    "400": {
+                        "description": "Bad parameter in body"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Registration already exists"
+                    }
+                }
+            },
+            "put": {
+                "operationId": "updateRegistrations",
+                "description": "Update callback registration configuration.",
+                "tags": ["Callback Registration"],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CallbackSummary"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Accepted"
+                    },
+                    "400": {
+                        "description": "Bad parameter in body"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "removeRegistrations",
+                "description": "Remove callback registrations.",
+                "tags": ["Callback Registration"],
+                "responses": {
+                    "201": {
+                        "description": "Accepted"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "APN not found"
+                    }
+                }
+            }
+        },
+        "/dl-data-delivery": {
+            "post": {
+                "description": "The user application submits mobile-terminated (downlink) data to a specific device using its unique identifier. It should then wait at least 2 minutes for a delivery notification before submitting any other message.",
+                "tags": ["Send Mobile-Terminated (Downlink) Data"],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/ApiKey"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DownlinkData"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/DownlinkAccepted"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Missing or invalid body parameter"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "403": {
+                        "description": "Forbidden - another message is in progress",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorCode"
+                                },
+                                "example": {
+                                    "code": 1021,
+                                    "message": "Failed to process DL Data request as previous DL transaction is still in-progress"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Device not found"
+                    }
+                }
+            }
+        },
+        "/{$uplinkCallbackUrl}": {
+            "post": {
+                "tags": ["Notification Callbacks"],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CallbackApiKey"
+                    }
+                ],
+                "requestBody": {
+                    "description": "Mobile-Originated data for event `UL_DATA_NOTIFICATION`",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UplinkData"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Your server implementation should return this HTTP status code\nif the data was received successfully\n"
+                    }
+                }
+            }
+        },
+        "/{$downlinkCallbackUrl}": {
+            "post": {
+                "tags": ["Notification Callbacks"],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CallbackApiKey"
+                    }
+                ],
+                "requestBody": {
+                    "description": "Mobile-Terminated delivery information for event `DL_DATA_DELIVERY_STATUS_NOTIFICATION`",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DownlinkDelivery"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Your server implementation should return this HTTP status code\nif the data was received successfully\n"
+                    }
+                }
+            }
+        },
+        "/{$ueStatusCallbackUrl}": {
+            "post": {
+                "tags": ["Notification Callbacks"],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/CallbackApiKey"
+                    }
+                ],
+                "requestBody": {
+                    "description": "Attach or detach information for event `UE_NETWORK_STATUS_NOTIFICATION`",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/UeStatus"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Your server implementation should return this HTTP status code\nif the data was received successfully\n"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "parameters": {
+            "AppId": {
+                "name": "APP-ID",
+                "in": "header",
+                "description": "The NIDD APN",
+                "required": true,
+                "schema": {
+                    "type": "string"
+                },
+                "example": "<apn.demo>"
+            },
+            "ApiKey": {
+                "name": "APIKEY",
+                "in": "header",
+                "description": "The API key provided by Viasat",
+                "required": true,
+                "schema": {
+                    "type": "string"
+                },
+                "example": "<viasatProvidedApiKey>"
+            },
+            "CallbackApiKey": {
+                "name": "APIKEY",
+                "in": "header",
+                "description": "The API key provided by the customer",
+                "required": true,
+                "schema": {
+                    "type": "string"
+                },
+                "example": "<customerProvidedApiKey>"
+            }
+        },
+        "schemas": {
+            "ErrorCode": {
+                "type": "object",
+                "required": [
+                    "code",
+                    "message"
+                ],
+                "properties": {
+                    "code": {
+                        "type": "number"
+                    },
+                    "message": {
+                        "type": "string"
+                    }
+                }
+            },
+            "Callback": {
+                "type": "object",
+                "required": [
+                    "event",
+                    "callbackUrl"
+                ],
+                "properties": {
+                    "event": {
+                        "type": "string",
+                        "enum": [
+                            "UL_DATA_NOTIFICATION",
+                            "DL_DATA_DELIVERY_STATUS_NOTIFICATION",
+                            "UE_NETWORK_STATUS_NOTIFICATION"
+                        ]
+                    },
+                    "callbackUrl" : {
+                        "type": "string"
+                    }
+                }
+            },
+            "CallbackSummary": {
+                "type": "object",
+                "required": [
+                    "protocol",
+                    "appSecretKey",
+                    "eventUrls"
+                ],
+                "properties": {
+                    "protocol": {
+                        "type": "string",
+                        "enum": [
+                            "NON_SMP"
+                        ],
+                        "default": "NON_SMP"
+                    },
+                    "appSecretKey": {
+                        "type": "string"
+                    },
+                    "eventUrls": {
+                        "type": "array",
+                        "maxItems": 3,
+                        "items": {
+                            "$ref": "#/components/schemas/Callback"
+                        }
+                    }
+                },
+                "example": {
+                    "protocol": "NON_SMP",
+                    "appSecretKey": "<customerApiKey>",
+                    "eventUrls": [
+                        {
+                            "event": "UL_DATA_NOTIFICATION",
+                            "callbackUrl": "https://<root>/uplink-notification"
+                        },
+                        {
+                            "event": "DL_DATA_DELIVERY_STATUS_NOTIFICATION",
+                            "callbackUrl": "https://<root>/downlink-notification"
+                        },
+                        {
+                            "event": "UE_NETWORK_STATUS_NOTIFICATION",
+                            "callbackUrl": "https://<root>/ue-status-notification"
+                        }
+                    ]
+                }
+            },
+            "UplinkData": {
+                "type": "object",
+                "required": [
+                    "event",
+                    "appId",
+                    "ueExternalIdentifier",
+                    "dataSizeInbytes",
+                    "contentData"
+                ],
+                "properties": {
+                    "event": {
+                        "type": "string",
+                        "enum": ["UL_DATA_NOTIFICATION"]
+                    },
+                    "appId": {
+                        "type": "string"
+                    },
+                    "ueExternalIdentifier": {
+                        "type": "string",
+                        "format": "<imsi>@dmp.skylo.tech"
+                    },
+                    "dataSizeInbytes": {
+                        "type": "number"
+                    },
+                    "contentData": {
+                        "type": "string",
+                        "format": "hex"
+                    }
+                },
+                "example": {
+                    "appId": "test.apn",
+                    "ueExternalIdentifier": "123456789012345@dmp.skylo.tech",
+                    "dataSizeInbytes": 45,
+                    "contentData": "F005BA11"
+                }
+            },
+            "DownlinkData": {
+                "type": "object",
+                "required": [
+                    "appId",
+                    "ueExternalIdentifier",
+                    "contentData"
+                ],
+                "properties": {
+                    "appId": {
+                        "type": "string"
+                    },
+                    "ueExternalIdentifier": {
+                        "type": "string",
+                        "format": "<imsi>@dmp.skylo.tech"
+                    },
+                    "contentData": {
+                        "type": "string",
+                        "format": "hex"
+                    }
+                },
+                "example": {
+                    "appId": "test.apn",
+                    "ueExternalIdentifier": "123456789012345@dmp.skylo.tech",
+                    "contentData": "D00D1E"
+                }
+            },
+            "DownlinkAccepted": {
+                "type": "object",
+                "required": [
+                    "dlMessageId",
+                    "dataSizeInBytes"
+                ],
+                "properties": {
+                    "dlMessageId": {
+                        "type": "number"
+                    },
+                    "dataSizeInBytes": {
+                        "type": "number"
+                    }
+                },
+                "example": {
+                    "dlMessageId": 12345,
+                    "dataSizeInBytes": 45
+                }
+            },
+            "DownlinkDelivery": {
+                "type": "object",
+                "required": [
+                    "event",
+                    "dlMessageId",
+                    "ueExternalIdentifier",
+                    "deliveryStatus"
+                ],
+                "properties": {
+                    "event": {
+                        "type": "string",
+                        "enum": ["DL_DATA_DELIVERY_STATUS_NOTIFICATION"]
+                    },
+                    "dlMessageId": {
+                        "type": "number"
+                    },
+                    "ueExternalIdentifier": {
+                        "type": "string",
+                        "format": "<imsi>@dmp.skylo.tech"
+                    },
+                    "deliveryStatus": {
+                        "type": "string"
+                    },
+                    "recepientExternalIdentifier": {
+                        "type": "string",
+                        "format": "<imsi>@dmp.skylo.tech"
+                    },
+                    "failureInfo": {
+                        "type": "object",
+                        "properties": {
+                            "reason": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "UeStatus": {
+                "type": "object",
+                "required": [
+                    "event",
+                    "messageId",
+                    "ueExternalIdentifier",
+                    "timestamp",
+                    "networkStatus"
+                ],
+                "properties": {
+                    "event": {
+                        "type": "string",
+                        "enum": ["UE_NETWORK_STATUS_NOTIFICATION"]
+                    },
+                    "messageId": {
+                        "type": "string"
+                    },
+                    "ueExternalIdentifier": {
+                        "type": "string",
+                        "format": "<imsi>@dmp.skylo.tech"
+                    },
+                    "timestamp": {
+                        "type": "number"
+                    },
+                    "networkStatus": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    }
+}
