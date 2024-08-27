@@ -16,3 +16,5 @@ the application receives a delivery notification via the pre-defined callback.
 
 Contact Viasat to ask us more about our *Direct to Device*
 *Early Adopter Program* (**DEAP**).
+
+[Swagger Documentation](https://inmarsat-enterprise.github.io/ntn-poc-nidd-api)
