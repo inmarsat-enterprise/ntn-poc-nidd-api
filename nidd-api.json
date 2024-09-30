@@ -143,7 +143,18 @@
                         }
                     },
                     "400": {
-                        "description": "Missing or invalid body parameter"
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorCode"
+                                },
+                                "example": {
+                                    "code": 1009,
+                                    "message": "DL Data request rejected as it did not contain any data."
+                                }
+                            }
+                        }
                     },
                     "401": {
                         "description": "Unauthorized"
@@ -163,7 +174,91 @@
                         }
                     },
                     "404": {
-                        "description": "Device not found"
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorCode"
+                                },
+                                "example": {
+                                    "code": 64,
+                                    "message": "IMSI not found"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Unable to process request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorCode"
+                                },
+                                "example": {
+                                    "code": 1024,
+                                    "message": "UE temporarily unreachable"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/dl-data-delivery/cancel": {
+            "put": {
+                "description": "Cancel previously submitted downlink(s) to a device/UE.",
+                "tags": ["Send Mobile-Terminated (Downlink) Data"],
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/AppId"
+                    },
+                    {
+                        "$ref": "#/components/parameters/ApiKey"
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/DownlinkCancellation"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "202": {
+                        "description": "Accepted"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorCode"
+                                },
+                                "example": {
+                                    "code": 1011,
+                                    "message": "Mandatory parameter is missing in request"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorCode"
+                                },
+                                "example": {
+                                    "code": 70,
+                                    "message": "Message not found"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -481,6 +576,24 @@
                             "reason": {
                                 "type": "string"
                             }
+                        }
+                    }
+                }
+            },
+            "DownlinkCancellation": {
+                "type": "object",
+                "required": [
+                    "ueExternalIdentifier",
+                    "dlMessageIds"
+                ],
+                "properties": {
+                    "ueExternalIdentifier": {
+                        "type": "string"
+                    },
+                    "dlMessageIds": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
                         }
                     }
                 }
